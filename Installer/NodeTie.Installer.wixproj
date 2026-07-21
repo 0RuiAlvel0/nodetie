@@ -1,0 +1,10 @@
+<Project Sdk="WixToolset.Sdk/4.0.5">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">0.0.2</ProductVersion>
+    <Manufacturer Condition="'$(Manufacturer)' == ''">NodeTie</Manufacturer>
+    <UpgradeCode Condition="'$(UpgradeCode)' == ''">D7E8D8D0-84D8-44A1-B4C5-C27A70A70622</UpgradeCode>
+    <DefineConstants>ProductVersion=$(ProductVersion);Manufacturer=$(Manufacturer);UpgradeCode=$(UpgradeCode);PublishDir=$(PublishDir)</DefineConstants>
+  </PropertyGroup>
+</Project>

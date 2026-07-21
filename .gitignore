@@ -1,5 +1,8 @@
 bin/
 obj/
+artifacts/
+Installer/bin/
+Installer/obj/
 *.user
 *.suo
 *.userosscache

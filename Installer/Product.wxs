@@ -1,0 +1,44 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="NodeTie"
+    Manufacturer="$(var.Manufacturer)"
+    Version="$(var.ProductVersion)"
+    UpgradeCode="$(var.UpgradeCode)"
+    Scope="perMachine"
+    Language="1033"
+    Compressed="yes">
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of NodeTie is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="NodeTie" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Component Id="NodeTieExecutable" Guid="*">
+        <File Source="$(var.PublishDir)\NodeTie.exe" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="ProtocolRegistration" Directory="INSTALLFOLDER">
+      <Component Id="WinlinkProtocol" Guid="*">
+        <RegistryKey Root="HKLM" Key="Software\Classes\winlink">
+          <RegistryValue Type="string" Value="URL:NodeTie Deep Link" KeyPath="yes" />
+          <RegistryValue Name="URL Protocol" Type="string" Value="" />
+        </RegistryKey>
+
+        <RegistryKey Root="HKLM" Key="Software\Classes\winlink\shell\open\command">
+          <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]NodeTie.exe&quot; &quot;%1&quot;" />
+        </RegistryKey>
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="MainFeature" Title="NodeTie" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentGroupRef Id="ProtocolRegistration" />
+    </Feature>
+  </Package>
+</Wix>

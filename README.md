@@ -1,8 +1,10 @@
-# NodeTie
+# NodeTie v.0.0.3 21072026
 
 NodeTie is a Windows tray application for creating and opening deep links to local files and URLs.
 
 The project is conceptually similar to Hooksmark, but the implementation is Windows-specific and built around a custom `winlink://` URI scheme.
+
+Please see the [the project website](https://site.supertechman.com/nodetie) for an updated overview and documentation.
 
 ## Problem Scope
 
@@ -14,6 +16,20 @@ NodeTie addresses this by encoding two values in generated links:
 2. A stable file identifier (`sid`)
 
 When a deep link is opened, NodeTie can resolve by path first, then fall back to stable-ID-based lookup for moved files on the same volume.
+
+## NOTES AND TODOs
+- Supported applications (you can jump from one of these applications to the other via deep link):
+	- Microsoft Edge
+	- Mozilla Firefox
+	- Microsoft Word
+	- Microsoft Excel
+	- Windows Explorer (for file selection)
+- Add support for the following applications is coming (because I use them/ for others, feel free to contribute):
+	- Microsoft PowerPoint
+	- Google Chrome
+	- Microsoft OneNote  (as in you can jump around through deep links from a file to an OneNote note and back)
+	- Obsidian (as in you can jump around through deep links from a file to an obsidian note and back)
+	- Microsoft Text Editor.
 
 ## Hooksmark Feature Mapping
 
@@ -66,3 +82,64 @@ When Word or Excel is the foreground app, NodeTie can capture the active documen
 - Obsidian mode copies markdown links.
 - OneNote mode copies display text plus HTML links.
 - Explorer, browser, and Office contexts are treated as link sources; output format is selectable in settings.
+
+## Packaging and Installation (MSI)
+
+NodeTie now includes a WiX v4 installer project under [Installer/NodeTie.Installer.wixproj](Installer/NodeTie.Installer.wixproj).
+
+### What the installer does
+
+- Installs NodeTie under `%ProgramFiles%\NodeTie` (per-machine installation).
+- Registers `winlink://` at `HKLM\Software\Classes\winlink` (system-wide protocol registration).
+- Supports major upgrades via a stable MSI `UpgradeCode`.
+- Leaves user data alone on upgrade because the SQLite DB is stored separately at `%LocalAppData%\NodeTie\nodetie.db` by app code.
+
+### Build prerequisites
+
+1. .NET 8 SDK installed.
+2. Internet access on first restore so `WixToolset.Sdk` can be restored.
+
+### Build a versioned installer
+
+From repo root:
+
+```powershell
+pwsh ./scripts/build-installer.ps1 -Version 1.2.0
+```
+
+Artifacts are produced in:
+
+- Publish output: `artifacts/publish/<version>/`
+- MSI output: `artifacts/installer/<version>/`
+
+### Versioning and upgrade behavior
+
+Use semantic versioning: `MAJOR.MINOR.PATCH`.
+
+- `PATCH` (e.g., `1.2.0` -> `1.2.1`): bug fix release.
+- `MINOR` (e.g., `1.2.1` -> `1.3.0`): backward-compatible feature release.
+- `MAJOR` (e.g., `1.9.0` -> `2.0.0`): breaking change release.
+
+For MSI behavior in this repo:
+
+- Build every release with a new `ProductVersion`.
+- Keep `UpgradeCode` constant in [Installer/NodeTie.Installer.wixproj](Installer/NodeTie.Installer.wixproj).
+- `MajorUpgrade` in [Installer/Product.wxs](Installer/Product.wxs) removes the old MSI and installs the new one.
+
+This means:
+
+- Re-running the same version is effectively a repair/reinstall path.
+- Installing a newer version upgrades in place.
+- Installing an older version is blocked (downgrade protection).
+
+Practical guidance:
+
+- Even if your app release is a semver patch/minor update, this installer flow still uses MSI major-upgrade mechanics.
+- In other words: `1.2.0` -> `1.2.1`, `1.3.0`, and `2.0.0` are all delivered as "install newer MSI over older MSI".
+- Database compatibility across those app versions is your responsibility in app startup/migrations; installer behavior is consistent.
+
+### Database preservation
+
+The app database is not installed by MSI and should survive upgrades and uninstall/reinstall cycles as long as `%LocalAppData%\NodeTie\nodetie.db` is retained.
+
+If you later need destructive uninstall behavior, implement it as an explicit opt-in cleanup step, not default MSI behavior.
