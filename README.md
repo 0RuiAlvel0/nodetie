@@ -82,6 +82,7 @@ When Word or Excel is the foreground app, NodeTie can capture the active documen
 - Obsidian mode copies markdown links.
 - OneNote mode copies display text plus HTML links.
 - Explorer, browser, and Office contexts are treated as link sources; output format is selectable in settings.
+- Settings now include a startup toggle: "Launch NodeTie when I sign in to Windows".
 
 ## Packaging and Installation (MSI)
 
@@ -91,6 +92,7 @@ NodeTie now includes a WiX v4 installer project under [Installer/NodeTie.Install
 
 - Installs NodeTie under `%ProgramFiles%\NodeTie` (per-machine installation).
 - Registers `winlink://` at `HKLM\Software\Classes\winlink` (system-wide protocol registration).
+- On first run, app startup config is written at `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\NodeTie`, which makes NodeTie appear under Windows 11 Startup Apps for that user.
 - Supports major upgrades via a stable MSI `UpgradeCode`.
 - Leaves user data alone on upgrade because the SQLite DB is stored separately at `%LocalAppData%\NodeTie\nodetie.db` by app code.
 
