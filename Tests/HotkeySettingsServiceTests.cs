@@ -99,4 +99,33 @@ public sealed class HotkeySettingsServiceTests
         Assert.Equal(copySelection, loadedCopySelection);
         Assert.Equal(CopyLinkTarget.OneNote, loadedCopyTarget);
     }
+
+    [Fact]
+    public void GetOpenPanelFallbackCandidates_StartsWithPreferredBinding()
+    {
+        HotkeyBinding preferred = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.F8);
+
+        IReadOnlyList<HotkeyBinding> candidates = HotkeySettingsService.GetOpenPanelFallbackCandidates(preferred);
+
+        Assert.Equal(preferred, candidates[0]);
+        Assert.Contains(HotkeyBinding.Default, candidates);
+        Assert.True(candidates.Count >= 6);
+    }
+
+    [Fact]
+    public void GetCopySelectionFallbackCandidates_DeduplicatesPreferredBinding()
+    {
+        IReadOnlyList<HotkeyBinding> candidates = HotkeySettingsService.GetCopySelectionFallbackCandidates(HotkeySettingsService.DefaultCopySelectionBinding);
+
+        Assert.Equal(HotkeySettingsService.DefaultCopySelectionBinding, candidates[0]);
+        Assert.Equal(candidates.Count, candidates.Distinct().Count());
+    }
+
+    [Fact]
+    public void GetCopySelectionFallbackCandidates_DoesNotContainNullBinding()
+    {
+        IReadOnlyList<HotkeyBinding> candidates = HotkeySettingsService.GetCopySelectionFallbackCandidates(HotkeySettingsService.DefaultCopySelectionBinding);
+
+        Assert.DoesNotContain(candidates, static candidate => candidate is null);
+    }
 }

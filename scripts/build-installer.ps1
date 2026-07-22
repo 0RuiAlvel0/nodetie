@@ -1,5 +1,4 @@
 param(
-    [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
     [string]$Version,
 
@@ -11,6 +10,31 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+$sharedVersionFile = Join-Path $repoRoot "Directory.Build.props"
+
+function Get-SharedNodeTieVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PropsFilePath
+    )
+
+    if (-not (Test-Path $PropsFilePath)) {
+        throw "Shared version file not found: $PropsFilePath"
+    }
+
+    [xml]$props = Get-Content -Path $PropsFilePath
+    $sharedVersion = $props.Project.PropertyGroup.Version | Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace($sharedVersion)) {
+        throw "Version was not found in $PropsFilePath"
+    }
+
+    return $sharedVersion.Trim()
+}
+
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = Get-SharedNodeTieVersion -PropsFilePath $sharedVersionFile
+}
+
 $publishDir = Join-Path $repoRoot "artifacts\publish\$Version"
 $installerOutDir = Join-Path $repoRoot "artifacts\installer\$Version"
 

@@ -6,10 +6,23 @@ namespace NodeTie.Infrastructure;
 public sealed class NodeTieMessageWindow : NativeWindow, IDisposable
 {
     public const int WmHotKey = 0x0312;
+    private bool _disposed;
     public event EventHandler<int>? HotKeyPressed;
 
     public NodeTieMessageWindow()
     {
+        EnsureHandle();
+    }
+
+    public IntPtr EnsureHandle()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (Handle != IntPtr.Zero)
+        {
+            return Handle;
+        }
+
         CreateHandle(new CreateParams
         {
             Caption = "NodeTieMessageWindow",
@@ -20,6 +33,8 @@ public sealed class NodeTieMessageWindow : NativeWindow, IDisposable
             Style = 0,
             ExStyle = 0
         });
+
+        return Handle;
     }
 
     protected override void WndProc(ref Message m)
@@ -34,6 +49,7 @@ public sealed class NodeTieMessageWindow : NativeWindow, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         DestroyHandle();
         GC.SuppressFinalize(this);
     }

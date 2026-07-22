@@ -103,7 +103,29 @@ NodeTie now includes a WiX v4 installer project under [Installer/NodeTie.Install
 
 ### Build a versioned installer
 
+Set the release version once in `Directory.Build.props`:
+
+```xml
+<Project>
+	<PropertyGroup>
+		<Version>0.0.4</Version>
+	</PropertyGroup>
+</Project>
+```
+
+That shared `Version` value flows into:
+
+- the app executable version shown in About
+- the default WiX `ProductVersion`
+- the installer build script when `-Version` is omitted
+
 From repo root:
+
+```powershell
+pwsh ./scripts/build-installer.ps1
+```
+
+To override the shared version for a one-off build:
 
 ```powershell
 pwsh ./scripts/build-installer.ps1 -Version 1.2.0

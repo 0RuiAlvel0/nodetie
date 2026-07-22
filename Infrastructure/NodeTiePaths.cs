@@ -7,6 +7,7 @@ public static class NodeTiePaths
 {
     private const string ApplicationFolderName = "NodeTie";
     private const string DatabaseFileName = "nodetie.db";
+    private const string StartupLogFileName = "startup.log";
 
     public static string GetAppDataDirectory()
     {
@@ -17,6 +18,11 @@ public static class NodeTiePaths
     public static string GetDatabasePath()
     {
         return Path.Combine(GetAppDataDirectory(), DatabaseFileName);
+    }
+
+    public static string GetStartupLogPath()
+    {
+        return Path.Combine(GetAppDataDirectory(), StartupLogFileName);
     }
 
     public static void EnsureAppDataDirectoryExists()

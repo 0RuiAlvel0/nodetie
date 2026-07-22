@@ -57,7 +57,7 @@ public sealed class NodeTieApplicationContext : ApplicationContext
 
         // Startup registration uses persisted settings so hotkey behavior is user-configurable.
         (HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding) = _hotkeySettingsService.LoadAllOrDefault();
-        ApplyHotkeyBindings(openPanelBinding, copySelectionBinding, showErrorMessage: true);
+        ApplyHotkeyBindings(openPanelBinding, copySelectionBinding, allowFallback: true, showErrorMessage: true);
     }
 
     private NotifyIcon CreateNotifyIcon()
@@ -91,6 +91,9 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         ToolStripMenuItem settingsMenuItem = new("Settings...");
         settingsMenuItem.Click += (_, _) => ShowSettingsDialog();
 
+        ToolStripMenuItem aboutMenuItem = new("About");
+        aboutMenuItem.Click += (_, _) => ShowAboutDialog();
+
         ToolStripMenuItem exitMenuItem = new("Exit");
         exitMenuItem.Click += (_, _) => ExitThread();
 
@@ -100,6 +103,7 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         menu.Items.Add(bookmarkCurrentMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(settingsMenuItem);
+        menu.Items.Add(aboutMenuItem);
         menu.Items.Add(exitMenuItem);
 
         Icon trayIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
@@ -485,7 +489,7 @@ public sealed class NodeTieApplicationContext : ApplicationContext
             return;
         }
 
-        if (!ApplyHotkeyBindings(openPanelSelected, copySelectionSelected, showErrorMessage: true))
+        if (!ApplyHotkeyBindings(openPanelSelected, copySelectionSelected, allowFallback: false, showErrorMessage: true))
         {
             return;
         }
@@ -493,15 +497,47 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         _hotkeySettingsService.Save(openPanelSelected, copySelectionSelected, copyTargetSelected);
     }
 
-    private bool ApplyHotkeyBindings(HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding, bool showErrorMessage)
+    private void ShowAboutDialog()
     {
-        bool openPanelRegistered = _openPanelHotkeyManager.Register(openPanelBinding);
-        if (!openPanelRegistered)
+        string version = NodeTieVersionResolver.GetDisplayVersion();
+        MessageBox.Show(
+            $"NodeTie\nVersion {version}",
+            "About NodeTie",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+    }
+
+    private bool ApplyHotkeyBindings(HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding, bool allowFallback, bool showErrorMessage)
+    {
+        if (!allowFallback)
         {
+            bool openPanelRegistered = _openPanelHotkeyManager.Register(openPanelBinding);
+            if (!openPanelRegistered)
+            {
+                StartupDiagnostics.Error($"Open-panel hotkey registration failed for '{openPanelBinding}'.");
+                if (showErrorMessage)
+                {
+                    MessageBox.Show(
+                        $"Could not register open-panel hotkey '{openPanelBinding}'. It may already be used by another app.",
+                        "Hotkey registration failed",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+
+                return false;
+            }
+
+            bool copySelectionRegistered = _copySelectionHotkeyManager.Register(copySelectionBinding);
+            if (copySelectionRegistered)
+            {
+                return true;
+            }
+
+            StartupDiagnostics.Error($"Copy-selection hotkey registration failed for '{copySelectionBinding}'. Open-panel hotkey remains active.");
             if (showErrorMessage)
             {
                 MessageBox.Show(
-                    $"Could not register open-panel hotkey '{openPanelBinding}'. It may already be used by another app.",
+                    $"Could not register copy-selection hotkey '{copySelectionBinding}'. It may already be used by another app.",
                     "Hotkey registration failed",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
@@ -510,17 +546,34 @@ public sealed class NodeTieApplicationContext : ApplicationContext
             return false;
         }
 
-        bool copySelectionRegistered = _copySelectionHotkeyManager.Register(copySelectionBinding);
-        if (copySelectionRegistered)
+        HotkeyRegistrationPlanResult result = HotkeyRegistrationPlanner.Resolve(
+            openPanelBinding,
+            HotkeySettingsService.GetOpenPanelFallbackCandidates(openPanelBinding),
+            copySelectionBinding,
+            HotkeySettingsService.GetCopySelectionFallbackCandidates(copySelectionBinding),
+            _openPanelHotkeyManager.Register,
+            _openPanelHotkeyManager.Unregister,
+            _copySelectionHotkeyManager.Register);
+
+        if (result.Success)
         {
+            if (result.UsedOpenPanelFallback || result.UsedCopySelectionFallback)
+            {
+                string appliedOpenPanel = result.RegisteredOpenPanelBinding?.ToString() ?? openPanelBinding.ToString();
+                string appliedCopySelection = result.RegisteredCopySelectionBinding?.ToString() ?? copySelectionBinding.ToString();
+                string message = $"Hotkey conflict detected. Using '{appliedOpenPanel}' for open panel and '{appliedCopySelection}' for copy selection.";
+                StartupDiagnostics.Info(message);
+                ShowTrayNotification(message, ToolTipIcon.Warning);
+            }
+
             return true;
         }
 
-        _openPanelHotkeyManager.Unregister();
+        StartupDiagnostics.Error($"Hotkey registration failed for preferred bindings '{openPanelBinding}' and '{copySelectionBinding}', and all fallback candidates were unavailable.");
         if (showErrorMessage)
         {
             MessageBox.Show(
-                $"Could not register copy-selection hotkey '{copySelectionBinding}'. It may already be used by another app.",
+                $"NodeTie could not register the configured hotkeys or any fallback alternatives. Open Settings from the tray icon to choose different shortcuts.",
                 "Hotkey registration failed",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);

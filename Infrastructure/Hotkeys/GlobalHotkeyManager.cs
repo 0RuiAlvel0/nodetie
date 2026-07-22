@@ -24,8 +24,23 @@ public sealed class GlobalHotkeyManager : IDisposable
     {
         Unregister();
 
+        IntPtr windowHandle;
+        try
+        {
+            windowHandle = _window.EnsureHandle();
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+
         // This is the OS-level registration that lets the app react even when unfocused.
-        bool succeeded = RegisterHotKey(_window.Handle, _hotkeyId, (uint)binding.Modifiers, (uint)binding.Key);
+        if (windowHandle == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        bool succeeded = RegisterHotKey(windowHandle, _hotkeyId, (uint)binding.Modifiers, (uint)binding.Key);
         if (!succeeded)
         {
             return false;
@@ -43,7 +58,18 @@ public sealed class GlobalHotkeyManager : IDisposable
             return;
         }
 
-        UnregisterHotKey(_window.Handle, _hotkeyId);
+        try
+        {
+            IntPtr windowHandle = _window.EnsureHandle();
+            if (windowHandle != IntPtr.Zero)
+            {
+                UnregisterHotKey(windowHandle, _hotkeyId);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
         _isRegistered = false;
         CurrentBinding = null;
     }

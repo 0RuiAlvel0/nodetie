@@ -8,10 +8,27 @@ public sealed class HotkeySettingsService
     private const string LegacySettingsKey = "hotkey.binding";
     private const string CopySelectionSettingsKey = "hotkey.copySelection";
     private const string CopyTargetSettingsKey = "copy.target";
-    private readonly SettingsRepository _settingsRepository;
-
     public static HotkeyBinding DefaultCopySelectionBinding { get; } = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.K);
     public static CopyLinkTarget DefaultCopyTarget { get; } = CopyLinkTarget.Obsidian;
+    private static readonly HotkeyBinding[] OpenPanelFallbackBindings =
+    [
+        HotkeyBinding.Default,
+        new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.J),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.U),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift, System.Windows.Forms.Keys.L),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift, System.Windows.Forms.Keys.J),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift, System.Windows.Forms.Keys.U)
+    ];
+    private static readonly HotkeyBinding[] CopySelectionFallbackBindings =
+    [
+        DefaultCopySelectionBinding,
+        new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.I),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.M),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift, System.Windows.Forms.Keys.K),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift, System.Windows.Forms.Keys.I),
+        new(HotkeyModifiers.Control | HotkeyModifiers.Alt | HotkeyModifiers.Shift, System.Windows.Forms.Keys.M)
+    ];
+    private readonly SettingsRepository _settingsRepository;
 
     public HotkeySettingsService(SettingsRepository settingsRepository)
     {
@@ -82,5 +99,29 @@ public sealed class HotkeySettingsService
         _settingsRepository.SetValue(OpenPanelSettingsKey, openPanelBinding.ToString());
         _settingsRepository.SetValue(CopySelectionSettingsKey, copySelectionBinding.ToString());
         _settingsRepository.SetValue(CopyTargetSettingsKey, copyTarget.ToString());
+    }
+
+    public static IReadOnlyList<HotkeyBinding> GetOpenPanelFallbackCandidates(HotkeyBinding preferredBinding)
+    {
+        return BuildFallbackCandidates(preferredBinding, OpenPanelFallbackBindings);
+    }
+
+    public static IReadOnlyList<HotkeyBinding> GetCopySelectionFallbackCandidates(HotkeyBinding preferredBinding)
+    {
+        return BuildFallbackCandidates(preferredBinding, CopySelectionFallbackBindings);
+    }
+
+    private static IReadOnlyList<HotkeyBinding> BuildFallbackCandidates(HotkeyBinding preferredBinding, IReadOnlyList<HotkeyBinding> fallbackBindings)
+    {
+        List<HotkeyBinding> candidates = [preferredBinding];
+        foreach (HotkeyBinding candidate in fallbackBindings)
+        {
+            if (!candidates.Contains(candidate))
+            {
+                candidates.Add(candidate);
+            }
+        }
+
+        return candidates;
     }
 }
