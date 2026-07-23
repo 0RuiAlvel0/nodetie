@@ -8,6 +8,7 @@ public sealed class HotkeySettingsService
     private const string LegacySettingsKey = "hotkey.binding";
     private const string CopySelectionSettingsKey = "hotkey.copySelection";
     private const string CopyTargetSettingsKey = "copy.target";
+    private const string RunAtLoginSettingsKey = "startup.runAtLogin";
     public static HotkeyBinding DefaultCopySelectionBinding { get; } = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.K);
     public static CopyLinkTarget DefaultCopyTarget { get; } = CopyLinkTarget.Obsidian;
     private static readonly HotkeyBinding[] OpenPanelFallbackBindings =
@@ -84,6 +85,23 @@ public sealed class HotkeySettingsService
         return DefaultCopyTarget;
     }
 
+    public bool TryLoadRunAtLogin(out bool runAtLogin)
+    {
+        string? stored = _settingsRepository.GetValue(RunAtLoginSettingsKey);
+        if (bool.TryParse(stored, out runAtLogin))
+        {
+            return true;
+        }
+
+        runAtLogin = false;
+        return false;
+    }
+
+    public bool LoadRunAtLoginOrDefault(bool defaultValue)
+    {
+        return TryLoadRunAtLogin(out bool runAtLogin) ? runAtLogin : defaultValue;
+    }
+
     public void Save(HotkeyBinding binding)
     {
         Save(binding, LoadCopySelectionOrDefault());
@@ -94,11 +112,24 @@ public sealed class HotkeySettingsService
         Save(openPanelBinding, copySelectionBinding, LoadCopyTargetOrDefault());
     }
 
+    public void Save(HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding, bool runAtLogin)
+    {
+        Save(openPanelBinding, copySelectionBinding, LoadCopyTargetOrDefault(), runAtLogin);
+    }
+
     public void Save(HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding, CopyLinkTarget copyTarget)
     {
         _settingsRepository.SetValue(OpenPanelSettingsKey, openPanelBinding.ToString());
         _settingsRepository.SetValue(CopySelectionSettingsKey, copySelectionBinding.ToString());
         _settingsRepository.SetValue(CopyTargetSettingsKey, copyTarget.ToString());
+    }
+
+    public void Save(HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding, CopyLinkTarget copyTarget, bool runAtLogin)
+    {
+        _settingsRepository.SetValue(OpenPanelSettingsKey, openPanelBinding.ToString());
+        _settingsRepository.SetValue(CopySelectionSettingsKey, copySelectionBinding.ToString());
+        _settingsRepository.SetValue(CopyTargetSettingsKey, copyTarget.ToString());
+        _settingsRepository.SetValue(RunAtLoginSettingsKey, runAtLogin.ToString());
     }
 
     public static IReadOnlyList<HotkeyBinding> GetOpenPanelFallbackCandidates(HotkeyBinding preferredBinding)

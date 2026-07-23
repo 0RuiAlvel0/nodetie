@@ -1,4 +1,5 @@
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+  xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package
     Name="NodeTie"
     Manufacturer="$(var.Manufacturer)"
@@ -13,13 +14,33 @@
 
     <MediaTemplate EmbedCab="yes" />
 
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch NodeTie now" />
+
+    <CustomAction
+      Id="LaunchNodeTie"
+      FileRef="NodeTieExeFile"
+      ExeCommand=""
+      Return="asyncNoWait"
+      Impersonate="yes" />
+
+    <UI>
+      <Publish
+        Dialog="ExitDialog"
+        Control="Finish"
+        Event="DoAction"
+        Value="LaunchNodeTie"
+        Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
+
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="NodeTie" />
     </StandardDirectory>
 
     <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
       <Component Id="NodeTieExecutable" Guid="*">
-        <File Source="$(var.PublishDir)\NodeTie.exe" KeyPath="yes" />
+        <File Id="NodeTieExeFile" Source="$(var.PublishDir)\NodeTie.exe" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
@@ -36,9 +57,38 @@
       </Component>
     </ComponentGroup>
 
+    <ComponentGroup Id="StartupRegistration" Directory="INSTALLFOLDER">
+      <Component Id="NodeTieStartupShortcut" Guid="*">
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\NodeTie"
+          Name="StartupShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+
+        <Shortcut
+          Id="NodeTieStartupShortcut"
+          Directory="StartupFolder"
+          Name="NodeTie"
+          Description="Launch NodeTie when you sign in to Windows."
+          Target="[INSTALLFOLDER]NodeTie.exe"
+          WorkingDirectory="INSTALLFOLDER" />
+      </Component>
+    </ComponentGroup>
+
     <Feature Id="MainFeature" Title="NodeTie" Level="1">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentGroupRef Id="ProtocolRegistration" />
+
+      <Feature
+        Id="StartupAppsFeature"
+        Title="Add NodeTie to Startup Apps"
+        Description="Launch NodeTie when you sign in to Windows."
+        Level="1"
+        AllowAbsent="yes">
+        <ComponentGroupRef Id="StartupRegistration" />
+      </Feature>
     </Feature>
   </Package>
 </Wix>

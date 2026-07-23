@@ -25,6 +25,7 @@ public sealed class NodeTieApplicationContext : ApplicationContext
     private readonly LinkRemovalService _linkRemovalService;
     private readonly BookmarkService _bookmarkService;
     private readonly HotkeySettingsService _hotkeySettingsService;
+    private readonly WindowsStartupRegistrationService _startupRegistrationService;
     private readonly GlobalHotkeyManager _openPanelHotkeyManager;
     private readonly GlobalHotkeyManager _copySelectionHotkeyManager;
     private LinkedFilesPanelForm? _panel;
@@ -39,7 +40,8 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         LinkCompositionService linkCompositionService,
         LinkRemovalService linkRemovalService,
         BookmarkService bookmarkService,
-        HotkeySettingsService hotkeySettingsService)
+        HotkeySettingsService hotkeySettingsService,
+        WindowsStartupRegistrationService startupRegistrationService)
     {
         _clipboardService = clipboardService;
         _selectedFileService = selectedFileService;
@@ -49,15 +51,20 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         _linkRemovalService = linkRemovalService;
         _bookmarkService = bookmarkService;
         _hotkeySettingsService = hotkeySettingsService;
+        _startupRegistrationService = startupRegistrationService;
         _messageWindow = new NodeTieMessageWindow();
         _messageWindow.HotKeyPressed += OnHotKeyPressed;
         _openPanelHotkeyManager = new GlobalHotkeyManager(_messageWindow, OpenPanelHotkeyId);
         _copySelectionHotkeyManager = new GlobalHotkeyManager(_messageWindow, CopySelectionHotkeyId);
         _notifyIcon = CreateNotifyIcon();
 
-        // Startup registration uses persisted settings so hotkey behavior is user-configurable.
+        // Apply persisted keyboard and startup preferences as soon as the tray app starts.
         (HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding) = _hotkeySettingsService.LoadAllOrDefault();
         ApplyHotkeyBindings(openPanelBinding, copySelectionBinding, allowFallback: true, showErrorMessage: true);
+
+        bool startupDefault = _startupRegistrationService.IsEnabledForCurrentUser();
+        bool runAtLogin = _hotkeySettingsService.LoadRunAtLoginOrDefault(startupDefault);
+        ApplyStartupPreference(runAtLogin, showErrorMessage: false);
     }
 
     private NotifyIcon CreateNotifyIcon()
@@ -478,13 +485,15 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         HotkeyBinding openPanelCurrent = _openPanelHotkeyManager.CurrentBinding ?? _hotkeySettingsService.LoadOpenPanelOrDefault();
         HotkeyBinding copySelectionCurrent = _copySelectionHotkeyManager.CurrentBinding ?? _hotkeySettingsService.LoadCopySelectionOrDefault();
         CopyLinkTarget copyTargetCurrent = _hotkeySettingsService.LoadCopyTargetOrDefault();
-        using HotkeySettingsForm settingsForm = new(openPanelCurrent, copySelectionCurrent, copyTargetCurrent);
+        bool startupDefault = _startupRegistrationService.IsEnabledForCurrentUser();
+        bool runAtLoginCurrent = _hotkeySettingsService.LoadRunAtLoginOrDefault(startupDefault);
+        using HotkeySettingsForm settingsForm = new(openPanelCurrent, copySelectionCurrent, copyTargetCurrent, runAtLoginCurrent);
         if (settingsForm.ShowDialog() != DialogResult.OK)
         {
             return;
         }
 
-        if (!settingsForm.TryGetSelectedSettings(out HotkeyBinding openPanelSelected, out HotkeyBinding copySelectionSelected, out CopyLinkTarget copyTargetSelected))
+        if (!settingsForm.TryGetSelectedSettings(out HotkeyBinding openPanelSelected, out HotkeyBinding copySelectionSelected, out CopyLinkTarget copyTargetSelected, out bool runAtLoginSelected))
         {
             return;
         }
@@ -494,7 +503,29 @@ public sealed class NodeTieApplicationContext : ApplicationContext
             return;
         }
 
-        _hotkeySettingsService.Save(openPanelSelected, copySelectionSelected, copyTargetSelected);
+        _hotkeySettingsService.Save(openPanelSelected, copySelectionSelected, copyTargetSelected, runAtLoginSelected);
+        ApplyStartupPreference(runAtLoginSelected, showErrorMessage: true);
+    }
+
+    private void ApplyStartupPreference(bool runAtLogin, bool showErrorMessage)
+    {
+        bool updated = _startupRegistrationService.TrySetEnabled(Application.ExecutablePath, runAtLogin, out string startupUpdateError);
+        if (updated)
+        {
+            return;
+        }
+
+        StartupDiagnostics.Error($"Startup registration update failed: {startupUpdateError}");
+        if (!showErrorMessage)
+        {
+            return;
+        }
+
+        MessageBox.Show(
+            $"NodeTie could not update Windows Startup Apps.\n\n{startupUpdateError}",
+            "NodeTie",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
     }
 
     private void ShowAboutDialog()

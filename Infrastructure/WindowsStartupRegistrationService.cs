@@ -1,12 +1,24 @@
 using System;
+using System.IO;
 using Microsoft.Win32;
 
 namespace NodeTie.Infrastructure;
 
 public sealed class WindowsStartupRegistrationService
 {
-    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string StartupValueName = "NodeTie";
+    private const string StartupShortcutFileName = "NodeTie.lnk";
+
+    public bool IsEnabledForCurrentUser()
+    {
+        try
+        {
+            return File.Exists(GetStartupShortcutPath());
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public bool TryEnsureRegistered(string executablePath, out string message)
     {
@@ -25,16 +37,19 @@ public sealed class WindowsStartupRegistrationService
 
         try
         {
-            using RegistryKey runKey = Registry.CurrentUser.CreateSubKey(RunKeyPath)
-                ?? throw new InvalidOperationException("Could not open the current-user startup Run key.");
+            string shortcutPath = GetStartupShortcutPath();
 
             if (isEnabled)
             {
-                runKey.SetValue(StartupValueName, BuildCommand(executablePath), RegistryValueKind.String);
+                CreateStartupShortcut(executablePath, shortcutPath);
                 return true;
             }
 
-            runKey.DeleteValue(StartupValueName, throwOnMissingValue: false);
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -44,8 +59,23 @@ public sealed class WindowsStartupRegistrationService
         }
     }
 
-    public static string BuildCommand(string executablePath)
+    public static string GetStartupShortcutPath()
     {
-        return $"\"{executablePath}\"";
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), StartupShortcutFileName);
+    }
+
+    private static void CreateStartupShortcut(string executablePath, string shortcutPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(shortcutPath) ?? throw new InvalidOperationException("Could not resolve the startup folder."));
+
+        dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")
+            ?? throw new InvalidOperationException("Could not create the Windows Script Host shell."))
+            ?? throw new InvalidOperationException("Could not create the Windows Script Host shell.");
+
+        dynamic shortcut = shell.CreateShortcut(shortcutPath);
+        shortcut.TargetPath = executablePath;
+        shortcut.WorkingDirectory = Path.GetDirectoryName(executablePath) ?? Environment.CurrentDirectory;
+        shortcut.Description = "Launch NodeTie when you sign in to Windows.";
+        shortcut.Save();
     }
 }

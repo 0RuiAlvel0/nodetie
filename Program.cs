@@ -66,6 +66,7 @@ class Program
             var bookmarkService = new BookmarkService(fileRepository, bookmarkRepository);
             var settingsRepository = new SettingsRepository(connectionFactory);
             var hotkeySettingsService = new HotkeySettingsService(settingsRepository);
+            var startupRegistrationService = new WindowsStartupRegistrationService();
 
             var explorerSelectionService = new ExplorerSelectionService();
             var foregroundWindowService = new ForegroundWindowService();
@@ -121,7 +122,8 @@ class Program
                 linkCompositionService,
                 linkRemovalService,
                 bookmarkService,
-                hotkeySettingsService));
+                hotkeySettingsService,
+                startupRegistrationService));
         }
         catch (Exception ex)
         {

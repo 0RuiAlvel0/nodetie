@@ -83,6 +83,36 @@ public sealed class HotkeySettingsServiceTests
     }
 
     [Fact]
+    public void LoadRunAtLoginOrDefault_ReturnsProvidedDefaultWhenNoStoredValueExists()
+    {
+        using var database = new SqliteTestDatabase();
+        var settingsRepository = new SettingsRepository(database.ConnectionFactory);
+        var service = new HotkeySettingsService(settingsRepository);
+
+        bool loadedFalseDefault = service.LoadRunAtLoginOrDefault(defaultValue: false);
+        bool loadedTrueDefault = service.LoadRunAtLoginOrDefault(defaultValue: true);
+
+        Assert.False(loadedFalseDefault);
+        Assert.True(loadedTrueDefault);
+    }
+
+    [Fact]
+    public void SaveDualBindingsWithCopyTargetAndRunAtLogin_ThenLoadRunAtLoginOrDefault_ReturnsPersistedValue()
+    {
+        using var database = new SqliteTestDatabase();
+        var settingsRepository = new SettingsRepository(database.ConnectionFactory);
+        var service = new HotkeySettingsService(settingsRepository);
+
+        HotkeyBinding openPanel = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, System.Windows.Forms.Keys.L);
+        HotkeyBinding copySelection = HotkeySettingsService.DefaultCopySelectionBinding;
+        service.Save(openPanel, copySelection, CopyLinkTarget.OneNote, runAtLogin: true);
+
+        bool loaded = service.LoadRunAtLoginOrDefault(defaultValue: false);
+
+        Assert.True(loaded);
+    }
+
+    [Fact]
     public void SaveDualBindingsWithCopyTarget_ThenLoadAllWithCopyTargetOrDefault_ReturnsPersistedValues()
     {
         using var database = new SqliteTestDatabase();

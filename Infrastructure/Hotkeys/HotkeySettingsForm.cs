@@ -11,9 +11,10 @@ public sealed class HotkeySettingsForm : Form
     private readonly HotkeyEditor _openPanelEditor;
     private readonly HotkeyEditor _copySelectionEditor;
     private readonly ComboBox _copyTargetComboBox;
+    private readonly CheckBox _runAtLoginCheckBox;
     private readonly TableLayoutPanel _rootLayout;
 
-    public HotkeySettingsForm(HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding, CopyLinkTarget copyTarget)
+    public HotkeySettingsForm(HotkeyBinding openPanelBinding, HotkeyBinding copySelectionBinding, CopyLinkTarget copyTarget, bool runAtLogin)
     {
         Text = "NodeTie Settings";
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -41,6 +42,15 @@ public sealed class HotkeySettingsForm : Form
         NodeTieTheme.ApplyComboBox(_copyTargetComboBox);
         _copyTargetComboBox.Items.Add("Obsidian");
         _copyTargetComboBox.Items.Add("OneNote");
+        _runAtLoginCheckBox = new CheckBox
+        {
+            Text = "Launch NodeTie when I sign in to Windows",
+            AutoSize = true,
+            ForeColor = NodeTieTheme.TextPrimary,
+            BackColor = Color.Transparent,
+            Checked = runAtLogin,
+            Margin = new Padding(0)
+        };
 
         Button saveButton = CreateButton("Save", NodeTieTheme.Accent, Color.Black);
         Button cancelButton = CreateButton("Cancel", NodeTieTheme.SurfaceAlt, NodeTieTheme.TextPrimary);
@@ -60,11 +70,12 @@ public sealed class HotkeySettingsForm : Form
         Shown += (_, _) => FitToWorkingArea();
     }
 
-    public bool TryGetSelectedSettings(out HotkeyBinding openPanelBinding, out HotkeyBinding copySelectionBinding, out CopyLinkTarget copyTarget)
+    public bool TryGetSelectedSettings(out HotkeyBinding openPanelBinding, out HotkeyBinding copySelectionBinding, out CopyLinkTarget copyTarget, out bool runAtLogin)
     {
         openPanelBinding = HotkeyBinding.Default;
         copySelectionBinding = HotkeySettingsService.DefaultCopySelectionBinding;
         copyTarget = HotkeySettingsService.DefaultCopyTarget;
+        runAtLogin = _runAtLoginCheckBox.Checked;
 
         if (!_openPanelEditor.TryBuildBinding(out openPanelBinding)
             || !_copySelectionEditor.TryBuildBinding(out copySelectionBinding))
@@ -161,7 +172,7 @@ public sealed class HotkeySettingsForm : Form
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             BackColor = NodeTieTheme.WindowBackground,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 5,
             Padding = new Padding(0, 0, 0, 8),
             Margin = new Padding(0)
         };
@@ -170,10 +181,12 @@ public sealed class HotkeySettingsForm : Form
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         content.Controls.Add(_openPanelEditor.BuildControl(), 0, 0);
         content.Controls.Add(_copySelectionEditor.BuildControl(), 0, 1);
         content.Controls.Add(BuildCopyTargetControl(), 0, 2);
+        content.Controls.Add(BuildStartupControl(), 0, 3);
 
         Label hint = new()
         {
@@ -183,7 +196,7 @@ public sealed class HotkeySettingsForm : Form
             ForeColor = NodeTieTheme.Muted,
             Margin = new Padding(4, 6, 4, 0)
         };
-        content.Controls.Add(hint, 0, 3);
+        content.Controls.Add(hint, 0, 4);
 
         return content;
     }
@@ -225,7 +238,7 @@ public sealed class HotkeySettingsForm : Form
 
     private void SaveAndClose()
     {
-        if (!TryGetSelectedSettings(out _, out _, out _))
+        if (!TryGetSelectedSettings(out _, out _, out _, out _))
         {
             MessageBox.Show(
                 this,
@@ -281,6 +294,44 @@ public sealed class HotkeySettingsForm : Form
         card.Controls.Add(_copyTargetComboBox, 1, 0);
         card.Controls.Add(hint, 0, 1);
         card.SetColumnSpan(hint, 2);
+        return card;
+    }
+
+    private Control BuildStartupControl()
+    {
+        TableLayoutPanel card = new()
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = NodeTieTheme.Surface,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(12),
+            Margin = new Padding(0, 0, 0, 8)
+        };
+
+        Label title = new()
+        {
+            Text = "Startup",
+            AutoSize = true,
+            ForeColor = NodeTieTheme.TextPrimary,
+            Font = NodeTieTheme.SectionFont,
+            Margin = new Padding(0, 0, 0, 8)
+        };
+
+        Label hint = new()
+        {
+            Text = "Controls whether NodeTie is listed and enabled in Windows Startup Apps.",
+            AutoSize = true,
+            MaximumSize = new Size(620, 0),
+            ForeColor = NodeTieTheme.TextSecondary,
+            Margin = new Padding(0, 8, 0, 0)
+        };
+
+        card.Controls.Add(title, 0, 0);
+        card.Controls.Add(_runAtLoginCheckBox, 0, 1);
+        card.Controls.Add(hint, 0, 2);
         return card;
     }
 
