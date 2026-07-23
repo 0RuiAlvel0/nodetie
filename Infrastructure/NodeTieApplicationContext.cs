@@ -532,7 +532,7 @@ public sealed class NodeTieApplicationContext : ApplicationContext
     {
         string version = NodeTieVersionResolver.GetDisplayVersion();
         MessageBox.Show(
-            $"NodeTie\nVersion {version}",
+            $"NodeTie\nVersion {version} \n\n https://site.supertechman.com/nodetie",
             "About NodeTie",
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);
