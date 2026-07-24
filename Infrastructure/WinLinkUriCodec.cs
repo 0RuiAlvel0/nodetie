@@ -70,36 +70,55 @@ public static class WinLinkUriCodec
         path = string.Empty;
         stableId = null;
 
-        if (string.IsNullOrWhiteSpace(clickedLink)
-            || !clickedLink.StartsWith(WinLinkScheme, StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(clickedLink))
         {
             return false;
         }
 
-        if (!Uri.TryCreate(clickedLink, UriKind.Absolute, out Uri? uri))
+        string normalizedLink = clickedLink.Trim().Trim('"');
+        if (!normalizedLink.StartsWith(WinLinkScheme, StringComparison.OrdinalIgnoreCase))
         {
-            string payload = clickedLink[WinLinkScheme.Length..];
-            payload = Uri.UnescapeDataString(payload);
-            payload = payload.TrimStart('/');
-            path = payload.Replace('/', '\\');
-            return !string.IsNullOrWhiteSpace(path);
+            return false;
         }
 
-        string decodedPath = Uri.UnescapeDataString(uri.AbsolutePath).TrimStart('/').Replace('/', '\\');
+        string payload = normalizedLink[WinLinkScheme.Length..].TrimStart('/');
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            return false;
+        }
+
+        string encodedPath = payload;
+        string query = string.Empty;
+        int queryIndex = payload.IndexOf('?');
+        if (queryIndex >= 0)
+        {
+            encodedPath = payload[..queryIndex];
+            query = payload[(queryIndex + 1)..];
+        }
+
+        string decodedPath = Uri.UnescapeDataString(encodedPath);
         if (string.IsNullOrWhiteSpace(decodedPath))
         {
             return false;
         }
 
-        if (decodedPath.StartsWith("https:\\\\", StringComparison.OrdinalIgnoreCase)
-            || decodedPath.StartsWith("http:\\\\", StringComparison.OrdinalIgnoreCase))
+        decodedPath = decodedPath.Trim();
+        if (decodedPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            || decodedPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || decodedPath.StartsWith("https:\\\\", StringComparison.OrdinalIgnoreCase)
+            || decodedPath.StartsWith("http:\\\\", StringComparison.OrdinalIgnoreCase)
+            || decodedPath.StartsWith("https:\\", StringComparison.OrdinalIgnoreCase)
+            || decodedPath.StartsWith("http:\\", StringComparison.OrdinalIgnoreCase))
         {
             decodedPath = decodedPath.Replace('\\', '/');
         }
-
-        if (!string.IsNullOrWhiteSpace(uri.Query))
+        else
         {
-            string query = uri.Query.TrimStart('?');
+            decodedPath = decodedPath.Replace('/', '\\');
+        }
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
             foreach (string segment in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
             {
                 string[] keyValue = segment.Split('=', 2);

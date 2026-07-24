@@ -26,6 +26,7 @@ public sealed class NodeTieApplicationContext : ApplicationContext
     private readonly BookmarkService _bookmarkService;
     private readonly HotkeySettingsService _hotkeySettingsService;
     private readonly WindowsStartupRegistrationService _startupRegistrationService;
+    private readonly DeepLinkService _deepLinkService;
     private readonly GlobalHotkeyManager _openPanelHotkeyManager;
     private readonly GlobalHotkeyManager _copySelectionHotkeyManager;
     private LinkedFilesPanelForm? _panel;
@@ -41,7 +42,8 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         LinkRemovalService linkRemovalService,
         BookmarkService bookmarkService,
         HotkeySettingsService hotkeySettingsService,
-        WindowsStartupRegistrationService startupRegistrationService)
+        WindowsStartupRegistrationService startupRegistrationService,
+        DeepLinkService deepLinkService)
     {
         _clipboardService = clipboardService;
         _selectedFileService = selectedFileService;
@@ -52,8 +54,10 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         _bookmarkService = bookmarkService;
         _hotkeySettingsService = hotkeySettingsService;
         _startupRegistrationService = startupRegistrationService;
+        _deepLinkService = deepLinkService;
         _messageWindow = new NodeTieMessageWindow();
         _messageWindow.HotKeyPressed += OnHotKeyPressed;
+        _messageWindow.DeepLinkReceived += OnDeepLinkReceived;
         _openPanelHotkeyManager = new GlobalHotkeyManager(_messageWindow, OpenPanelHotkeyId);
         _copySelectionHotkeyManager = new GlobalHotkeyManager(_messageWindow, CopySelectionHotkeyId);
         _notifyIcon = CreateNotifyIcon();
@@ -126,6 +130,7 @@ public sealed class NodeTieApplicationContext : ApplicationContext
 
     protected override void ExitThreadCore()
     {
+        _messageWindow.DeepLinkReceived -= OnDeepLinkReceived;
         _messageWindow.HotKeyPressed -= OnHotKeyPressed;
         if (_panel is not null)
         {
@@ -167,6 +172,16 @@ public sealed class NodeTieApplicationContext : ApplicationContext
         {
             CopyExplorerSelectionLinksWithFeedback(showMessageBoxOnError: false);
         }
+    }
+
+    private void OnDeepLinkReceived(object? sender, string deepLink)
+    {
+        if (string.IsNullOrWhiteSpace(deepLink))
+        {
+            return;
+        }
+
+        _deepLinkService.TryHandleDeepLink([deepLink]);
     }
 
     private void ShowLinkedFilesPanel()

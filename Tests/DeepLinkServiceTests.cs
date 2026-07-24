@@ -88,4 +88,28 @@ public sealed class DeepLinkServiceTests
         Assert.Equal("https://d.docs.live.net/4B8544510772040F/Documents/Companies/Parafrenalia/Partilha Andre/8. CLIENTS/aow.cmmsportal.com/report template.docx", path);
         Assert.Null(stableId);
     }
+
+    [Fact]
+    public void TryDecodeLink_WithOneNoteDecodedWebPath_PreservesHttpsTarget()
+    {
+        string encoded = "winlink:///https://www.pinterest.com/pin-creation-tool/";
+
+        bool ok = WinLinkUriCodec.TryDecodeLink(encoded, out string path, out string? stableId);
+
+        Assert.True(ok);
+        Assert.Equal("https://www.pinterest.com/pin-creation-tool/", path);
+        Assert.Null(stableId);
+    }
+
+    [Fact]
+    public void TryDecodeLink_WithOneNoteDecodedPathAndSid_ExtractsStableId()
+    {
+        string encoded = "winlink:///C:/Users/prime/OneDrive/Desktop/Rui J Alves.docx?sid=82A6EE0C:0053000000043084";
+
+        bool ok = WinLinkUriCodec.TryDecodeLink(encoded, out string path, out string? stableId);
+
+        Assert.True(ok);
+        Assert.Equal(@"C:\Users\prime\OneDrive\Desktop\Rui J Alves.docx", path);
+        Assert.Equal("82A6EE0C:0053000000043084", stableId);
+    }
 }

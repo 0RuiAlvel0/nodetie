@@ -23,6 +23,23 @@ class Program
         using Mutex singleInstanceMutex = new(initiallyOwned: true, name: SingleInstanceMutexName, createdNew: out bool createdNew);
         if (!createdNew)
         {
+            if (SingleInstanceDeepLinkForwarder.TryGetDeepLinkArgument(args, out string deepLink))
+            {
+                if (SingleInstanceDeepLinkForwarder.TryForwardToRunningInstance(deepLink))
+                {
+                    return;
+                }
+
+                // If IPC handoff fails, handle the link directly so protocol clicks still work.
+                var fallbackDeepLinkService = new DeepLinkService();
+                if (fallbackDeepLinkService.TryHandleDeepLink([deepLink]))
+                {
+                    return;
+                }
+
+                return;
+            }
+
             MessageBox.Show(
                 "NodeTie is already running. Use the tray icon from the existing instance.",
                 "NodeTie",
@@ -123,7 +140,8 @@ class Program
                 linkRemovalService,
                 bookmarkService,
                 hotkeySettingsService,
-                startupRegistrationService));
+                startupRegistrationService,
+                deepLinkService));
         }
         catch (Exception ex)
         {
