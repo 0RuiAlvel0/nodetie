@@ -47,6 +47,7 @@ dotnet publish (Join-Path $repoRoot "NodeTie.csproj") `
     -r $RuntimeIdentifier `
     --self-contained true `
     -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:PublishReadyToRun=true `
     -p:Version=$Version `
     -o $publishDir
@@ -57,6 +58,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Building MSI for NodeTie $Version"
 dotnet build (Join-Path $repoRoot "Installer\NodeTie.Installer.wixproj") `
+    -t:Rebuild `
     -c $Configuration `
     -p:ProductVersion=$Version `
     -p:Manufacturer=$Manufacturer `
